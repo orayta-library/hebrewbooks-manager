@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>hebrwbooksdownload</title>
+    <link rel="icon" type="image/png" href="/assets/favicon-DptpxmOq.png" />
+    <link rel="manifest" href="/assets/manifest-DTMPtXrm.json" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      .hide-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      .hide-scrollbar::-webkit-scrollbar {
+        width: 0;
+        height: 0;
+      }
+    </style>
+    <script type="module" crossorigin src="/assets/main-JQPOVj8n.js"></script>
+  </head>
+  <body class="min-h-screen bg-slate-50 text-slate-900 hide-scrollbar">
+    <div class="mx-auto max-w-6xl px-4 py-8">
+      <div class="sticky top-0 z-30 -mx-4 mb-6 border-b border-slate-200 bg-slate-50/95 px-4 py-4 backdrop-blur">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 class="text-2xl font-semibold tracking-tight">hebrwbooksdownload</h1>
+            <p class="mt-1 text-sm text-slate-600">הורד בקלות וביעילות את הספרים למחשב האישי שלך</p>
+          </div>
+          <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+            <div class="relative w-full sm:w-96">
+              <input
+                id="search"
+                class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-200"
+                placeholder="חיפוש לפי שם, מחבר, תגיות או ID..."
+              />
+              <div id="searchAutocomplete" class="absolute top-full left-0 right-0 z-40 mt-1 hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                <div id="searchList" class="max-h-64 overflow-auto hide-scrollbar divide-y divide-slate-100"></div>
+              </div>
+            </div>
+            <button
+              id="history"
+              class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm hover:bg-slate-50"
+            >
+              היסטוריית הורדות
+            </button>
+            <button
+              id="refresh"
+              class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800"
+            >
+              רענן
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="listTop"></div>
+
+      <div class="mt-6 rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div class="flex items-center justify-between gap-4 border-b border-slate-200 px-4 py-3">
+          <div class="text-sm text-slate-600" id="status">טוען...</div>
+          <div class="flex items-center gap-2">
+            <button id="prev" class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm hover:bg-slate-50">הקודם</button>
+            <button id="next" class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm hover:bg-slate-50">הבא</button>
+          </div>
+        </div>
+
+        <div id="bulkBar" class="hidden items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3">
+          <div class="flex items-center gap-3">
+            <div class="text-sm text-slate-700"><span id="selectedCount">0</span> נבחרו</div>
+            <button
+              id="downloadSelected"
+              class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800"
+            >
+              הורד נבחרים
+            </button>
+            <button id="clearSelection" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm hover:bg-slate-50">נקה</button>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="text-xs text-slate-600" id="progressText"></div>
+            <div class="h-2 w-40 overflow-hidden rounded-full bg-slate-200">
+              <div id="progressBar" class="h-2 w-0 rounded-full bg-slate-900"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="overflow-auto hide-scrollbar">
+          <table class="w-full min-w-[900px] text-right text-sm">
+            <thead class="sticky top-0 bg-slate-50 text-xs uppercase text-slate-600">
+              <tr>
+                <th class="px-4 py-3">
+                  <input id="selectAll" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-200" />
+                </th>
+                <th class="px-4 py-3">
+                  <button data-sort="id" class="sort inline-flex items-center gap-2 hover:text-slate-900">
+                    ID <span class="sortIcon text-[10px] text-slate-500"></span>
+                  </button>
+                </th>
+                <th class="px-4 py-3">
+                  <button data-sort="title" class="sort inline-flex items-center gap-2 hover:text-slate-900">
+                    שם הספר <span class="sortIcon text-[10px] text-slate-500"></span>
+                  </button>
+                </th>
+                <th class="px-4 py-3">
+                  <button data-sort="author" class="sort inline-flex items-center gap-2 hover:text-slate-900">
+                    מחבר <span class="sortIcon text-[10px] text-slate-500"></span>
+                  </button>
+                </th>
+                <th class="px-4 py-3">
+                  <button data-sort="printingPlace" class="sort inline-flex items-center gap-2 hover:text-slate-900">
+                    מקום הדפסה <span class="sortIcon text-[10px] text-slate-500"></span>
+                  </button>
+                </th>
+                <th class="px-4 py-3">
+                  <button data-sort="printingYear" class="sort inline-flex items-center gap-2 hover:text-slate-900">
+                    שנת הדפסה <span class="sortIcon text-[10px] text-slate-500"></span>
+                  </button>
+                </th>
+                <th class="px-4 py-3">
+                  <button data-sort="pages" class="sort inline-flex items-center gap-2 hover:text-slate-900">
+                    עמודים <span class="sortIcon text-[10px] text-slate-500"></span>
+                  </button>
+                </th>
+                <th class="px-4 py-3">הורדה</th>
+              </tr>
+            </thead>
+            <tbody id="rows" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+
+        <div class="flex items-center justify-center gap-2 border-t border-slate-200 bg-white px-4 py-3" aria-label="Pagination">
+          <button id="pagePrev" class="pageBtn rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm hover:bg-slate-50" title="הקודם">
+            &gt;
+          </button>
+          <div id="pageItems" class="flex items-center gap-2"></div>
+          <button id="pageNext" class="pageBtn rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm hover:bg-slate-50" title="הבא">
+            &lt;
+          </button>
+        </div>
+      </div>
+
+      <div id="pageModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-4">
+        <div class="w-full max-w-lg rounded-2xl bg-white shadow-xl">
+          <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+            <div class="text-base font-semibold">הכניסו מספר עמוד</div>
+            <button id="pageModalClose" class="rounded-lg px-2 py-1 text-slate-500 hover:bg-slate-50" aria-label="Close">✕</button>
+          </div>
+          <div class="px-5 py-4">
+            <input
+              id="pageModalInput"
+              inputmode="numeric"
+              class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-200"
+              placeholder="למשל: 15"
+            />
+            <div id="pageModalHint" class="mt-2 text-xs text-slate-500"></div>
+          </div>
+          <div class="flex items-center justify-start gap-2 border-t border-slate-200 px-5 py-4">
+            <button id="pageModalGo" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800">אישור</button>
+            <button id="pageModalCancel" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm hover:bg-slate-50">ביטול</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="historyModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-4">
+        <div class="w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-xl">
+          <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+            <div class="text-base font-semibold">היסטוריית הורדות</div>
+            <button id="historyModalClose" class="rounded-lg px-2 py-1 text-slate-500 hover:bg-slate-50" aria-label="Close">✕</button>
+          </div>
+          <div class="max-h-[60vh] overflow-auto hide-scrollbar px-5 py-4">
+            <div id="historyList" class="divide-y divide-slate-100"></div>
+          </div>
+          <div class="flex items-center justify-start gap-2 border-t border-slate-200 px-5 py-4">
+            <button id="historyClear" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm hover:bg-slate-50">נקה היסטוריה</button>
+            <button id="historyModalCancel" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800">סגור</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4 text-xs text-slate-500">
+        הנתיב להורדה נבנה כך: <span class="font-mono">https://download.hebrewbooks.org/downloadhandler.ashx?req=&lt;ID&gt;</span>
+      </div>
+    </div>
+
+  </body>
+</html>

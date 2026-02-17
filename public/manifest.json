@@ -1,0 +1,1 @@
+{"name": "hebrwbooksdownload", "short_name": "hebrwbooksdownload", "description": "הורד בקלות וביעילות את הספרים למחשב האישי שלך", "start_url": "/", "display": "standalone", "background_color": "#f8fafc", "theme_color": "#0f172a", "icons": [{"src": "/favicon.png", "sizes": "any", "type": "image/png"}], "lang": "he", "dir": "rtl"}
