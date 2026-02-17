@@ -702,10 +702,68 @@ async function load() {
         renderPagination();
         return;
       } catch (e) {
-        showNetworkError('לא נמצאה גרסת static של הספרים (books.json)');
-        $('status').textContent = 'שגיאה בטעינה';
-        $('rows').innerHTML = '';
-        return;
+        // Try loading books.js (JS wrapper) as NetFree may block .json files.
+        const loadBooksJs = () => new Promise((resolve, reject) => {
+          if (window.__BOOKS && Array.isArray(window.__BOOKS)) return resolve(window.__BOOKS);
+          const s = document.createElement('script');
+          s.src = 'books.js';
+          s.async = true;
+          s.onload = () => {
+            if (window.__BOOKS && Array.isArray(window.__BOOKS)) return resolve(window.__BOOKS);
+            return reject(new Error('books.js loaded but no data'));
+          };
+          s.onerror = () => reject(new Error('failed to load books.js'));
+          // timeout in case the script is blocked
+          const t = setTimeout(() => reject(new Error('books.js load timeout')), 8000);
+          s.onload = () => { clearTimeout(t); if (window.__BOOKS && Array.isArray(window.__BOOKS)) return resolve(window.__BOOKS); return reject(new Error('books.js loaded but no data')); };
+          s.onerror = () => { clearTimeout(t); reject(new Error('failed to load books.js')); };
+          document.head.appendChild(s);
+        });
+
+        try {
+          const items = await loadBooksJs();
+          const allItems = Array.isArray(items) ? items : [];
+          state.total = allItems.length;
+          booksById.clear();
+          allItems.forEach(b => booksById.set(b.id, b));
+
+          // local filtering / sorting / pagination (same as JSON path)
+          let filtered = allItems;
+          if (state.q) {
+            const ql = state.q.toLowerCase();
+            filtered = filtered.filter((b) => {
+              return (
+                (b.title && b.title.toLowerCase().includes(ql)) ||
+                (b.author && b.author.toLowerCase().includes(ql)) ||
+                (b.id && b.id.toLowerCase().includes(ql)) ||
+                (b.tags && b.tags.toLowerCase().includes(ql))
+              );
+            });
+          }
+
+          if (state.sortKey) {
+            const key = state.sortKey;
+            const dir = state.sortDir === 'desc' ? -1 : 1;
+            const coll = new Intl.Collator('he', { numeric: true, sensitivity: 'base' });
+            filtered = [...filtered].sort((a, b) => coll.compare(String(a[key] ?? ''), String(b[key] ?? '')) * dir);
+          }
+
+          state.total = filtered.length;
+          const slice = filtered.slice(state.offset, state.offset + state.limit);
+          booksById.clear();
+          (slice || []).forEach(book => booksById.set(book.id, book));
+          renderRows(slice || []);
+          setStatus();
+          updateBulkBar();
+          updateSortIcons();
+          renderPagination();
+          return;
+        } catch (err) {
+          showNetworkError('לא נמצאה גרסת static של הספרים (books.json / books.js)');
+          $('status').textContent = 'שגיאה בטעינה';
+          $('rows').innerHTML = '';
+          return;
+        }
       }
     }
 
