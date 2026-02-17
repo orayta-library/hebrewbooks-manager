@@ -631,6 +631,7 @@ function syncSelectAllCheckbox() {
 async function load() {
   $('status').textContent = 'טוען...';
 
+  // Try API first; if it 404s (static environment like GitHub Pages), fall back to static `books.json`.
   const url = new URL('/api/books', window.location.origin);
   if (state.q) url.searchParams.set('q', state.q);
   url.searchParams.set('limit', String(state.limit));
@@ -640,30 +641,82 @@ async function load() {
 
   try {
     const res = await fetch(url);
-    if (!res.ok) {
-      if (res.status === 0 || !navigator.onLine) {
-        showNetworkError('אין חיבור לרשת. אנא בדוק את חיבור האינטרנט שלך.');
-      } else {
-        showNetworkError(`שגיאת שרת: ${res.status} - לא ניתן לטעון את רשימת הספרים`);
-      }
-      $('status').textContent = 'שגיאה בטעינה';
-      $('rows').innerHTML = '';
+    if (res.ok) {
+      const data = await res.json();
+      state.total = data.total;
+      booksById.clear();
+      (data.items || []).forEach(book => booksById.set(book.id, book));
+      renderRows(data.items || []);
+      setStatus();
+      updateBulkBar();
+      updateSortIcons();
+      renderPagination();
       return;
     }
 
-    const data = await res.json();
-    state.total = data.total;
-    
-    booksById.clear();
-    (data.items || []).forEach(book => {
-      booksById.set(book.id, book);
-    });
-    
-    renderRows(data.items || []);
-    setStatus();
-    updateBulkBar();
-    updateSortIcons();
-    renderPagination();
+    // If API returns 404, attempt static fallback
+    if (res.status === 404) {
+      // fetch static JSON
+      try {
+        const sres = await fetch('books.json');
+        if (!sres.ok) throw new Error('static not found');
+        const items = await sres.json();
+        // keep full set for client-side filtering/pagination
+        const allItems = Array.isArray(items) ? items : [];
+        state.total = allItems.length;
+        // index all books
+        booksById.clear();
+        allItems.forEach(b => booksById.set(b.id, b));
+
+        // local filtering / sorting / pagination
+        let filtered = allItems;
+        if (state.q) {
+          const ql = state.q.toLowerCase();
+          filtered = filtered.filter((b) => {
+            return (
+              (b.title && b.title.toLowerCase().includes(ql)) ||
+              (b.author && b.author.toLowerCase().includes(ql)) ||
+              (b.id && b.id.toLowerCase().includes(ql)) ||
+              (b.tags && b.tags.toLowerCase().includes(ql))
+            );
+          });
+        }
+
+        if (state.sortKey) {
+          const key = state.sortKey;
+          const dir = state.sortDir === 'desc' ? -1 : 1;
+          const coll = new Intl.Collator('he', { numeric: true, sensitivity: 'base' });
+          filtered = [...filtered].sort((a, b) => coll.compare(String(a[key] ?? ''), String(b[key] ?? '')) * dir);
+        }
+
+        state.total = filtered.length;
+        const slice = filtered.slice(state.offset, state.offset + state.limit);
+        // re-index only visible items for rendering convenience
+        booksById.clear();
+        (slice || []).forEach(book => booksById.set(book.id, book));
+
+        renderRows(slice || []);
+        setStatus();
+        updateBulkBar();
+        updateSortIcons();
+        renderPagination();
+        return;
+      } catch (e) {
+        showNetworkError('לא נמצאה גרסת static של הספרים (books.json)');
+        $('status').textContent = 'שגיאה בטעינה';
+        $('rows').innerHTML = '';
+        return;
+      }
+    }
+
+    // other non-ok responses
+    if (res.status === 0 || !navigator.onLine) {
+      showNetworkError('אין חיבור לרשת. אנא בדוק את חיבור האינטרנט שלך.');
+    } else {
+      showNetworkError(`שגיאת שרת: ${res.status} - לא ניתן לטעון את רשימת הספרים`);
+    }
+    $('status').textContent = 'שגיאה בטעינה';
+    $('rows').innerHTML = '';
   } catch (error) {
     if (error.name === 'TypeError' && error.message.includes('fetch')) {
       showNetworkError('אין חיבור לרשת. אנא בדוק את חיבור האינטרנט שלך.');
