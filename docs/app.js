@@ -654,8 +654,8 @@ async function load() {
       return;
     }
 
-    // If API returns 404, attempt static fallback
-    if (res.status === 404) {
+    // If API is not OK (404, 418, blocked, etc.), attempt static fallback
+    if (!res.ok) {
       // fetch static JSON
       try {
         const sres = await fetch('books.json');
@@ -759,22 +759,18 @@ async function load() {
           renderPagination();
           return;
         } catch (err) {
-          showNetworkError('לא נמצאה גרסת static של הספרים (books.json / books.js)');
+          // fallback failed — show error based on original response
+          if (res.status === 0 || !navigator.onLine) {
+            showNetworkError('אין חיבור לרשת. אנא בדוק את חיבור האינטרנט שלך.');
+          } else {
+            showNetworkError(`שגיאת שרת: ${res.status} - לא ניתן לטעון את רשימת הספרים`);
+          }
           $('status').textContent = 'שגיאה בטעינה';
           $('rows').innerHTML = '';
           return;
         }
       }
     }
-
-    // other non-ok responses
-    if (res.status === 0 || !navigator.onLine) {
-      showNetworkError('אין חיבור לרשת. אנא בדוק את חיבור האינטרנט שלך.');
-    } else {
-      showNetworkError(`שגיאת שרת: ${res.status} - לא ניתן לטעון את רשימת הספרים`);
-    }
-    $('status').textContent = 'שגיאה בטעינה';
-    $('rows').innerHTML = '';
   } catch (error) {
     if (error.name === 'TypeError' && error.message.includes('fetch')) {
       showNetworkError('אין חיבור לרשת. אנא בדוק את חיבור האינטרנט שלך.');
