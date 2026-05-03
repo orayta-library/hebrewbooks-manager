@@ -21,19 +21,39 @@ def download_pdf(book_id: int, output_dir: Path, session: requests.Session, head
     output_dir.mkdir(parents=True, exist_ok=True)
     pdf_path = output_dir / f"hebrewbooks-{book_id}.pdf"
     url = f"{BASE_URL}?req={book_id}"
-    with session.get(url, headers=headers, stream=True, timeout=timeout) as resp:
-        if resp.status_code != 200:
-            print(f"[skip] book {book_id} returned HTTP {resp.status_code}")
-            return None
-        content_type = resp.headers.get("Content-Type", "")
-        if "pdf" not in content_type.lower():
-            print(f"[skip] book {book_id} content-type not PDF: {content_type}")
-            return None
-        with open(pdf_path, "wb") as fh:
-            for chunk in resp.iter_content(chunk_size=1048576):
-                if chunk:
-                    fh.write(chunk)
-    return pdf_path
+
+    # Retry logic for rate limiting
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            with session.get(url, headers=headers, stream=True, timeout=timeout) as resp:
+                if resp.status_code == 429:
+                    wait_time = 60 * (attempt + 1)  # Exponential backoff: 60s, 120s, 180s
+                    print(f"[retry] book {book_id} rate limited (429), waiting {wait_time}s before retry {attempt + 1}/{max_retries}")
+                    time.sleep(wait_time)
+                    continue
+                elif resp.status_code != 200:
+                    print(f"[skip] book {book_id} returned HTTP {resp.status_code}")
+                    return None
+
+                content_type = resp.headers.get("Content-Type", "")
+                if "pdf" not in content_type.lower():
+                    print(f"[skip] book {book_id} content-type not PDF: {content_type}")
+                    return None
+
+                with open(pdf_path, "wb") as fh:
+                    for chunk in resp.iter_content(chunk_size=1048576):
+                        if chunk:
+                            fh.write(chunk)
+                return pdf_path
+        except requests.exceptions.RequestException as e:
+            print(f"[error] network error for book {book_id}: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(30)
+            else:
+                return None
+
+    return None
 
 
 def extract_book_text(pdf_path: Path) -> tuple[str, list[dict]]:
@@ -73,7 +93,7 @@ def write_jsonl_chunk(records: list[dict], path: Path) -> int:
 
 
 def scan_start_id(state_file: Path, default: int) -> int:
-    if state_file.exists():
+    if state_file.exists():5.0
         try:
             state = json.loads(state_file.read_text(encoding="utf-8"))
             return int(state.get("next_book_id", default))
