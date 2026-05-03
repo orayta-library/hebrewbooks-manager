@@ -93,7 +93,7 @@ def write_jsonl_chunk(records: list[dict], path: Path) -> int:
 
 
 def scan_start_id(state_file: Path, default: int) -> int:
-    if state_file.exists():5.0
+    if state_file.exists():
         try:
             state = json.loads(state_file.read_text(encoding="utf-8"))
             return int(state.get("next_book_id", default))
